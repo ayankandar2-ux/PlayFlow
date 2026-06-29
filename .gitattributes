@@ -1,0 +1,19 @@
+# Auto-detect text files and perform LF normalization
+* text=auto
+
+# Force LF on shell scripts and gradle wrapper script
+gradlew text eol=lf
+*.sh text eol=lf
+
+# Force CRLF on Windows batch files
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Specify files that should be handled as binary files
+*.jar binary
+*.png binary
+*.webp binary
+*.jpg binary
+*.jpeg binary
+*.keystore binary
+*.base64 binary
