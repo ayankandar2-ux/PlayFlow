@@ -1,5 +1,5 @@
 {
-  "name": "Remix: PlayFlow Media Player",
+  "name": "VLC Playit",
   "description": "Play local videos with gesture controls, subtitle synchronization, and seamless media management in a simple, intuitive interface.",
   "requestFramePermissions": [],
   "majorCapabilities": [
