@@ -74,6 +74,7 @@ fun VideoPlayerScreen(
     val playbackSpeed by viewModel.playbackSpeed.collectAsState()
     val aspectRatioMode by viewModel.aspectRatioMode.collectAsState()
     val isMuted by viewModel.isMuted.collectAsState()
+    val playerError by viewModel.playerError.collectAsState()
 
     // Gestures Overlay Values
     val volumeProgress by viewModel.volumeProgress.collectAsState()
@@ -242,6 +243,48 @@ fun VideoPlayerScreen(
 
         // 4. Gesture Indicators Overlay (HUD Volume, Brightness, Seek Progress)
         GestureIndicatorOverlay(volumeProgress, brightnessProgress, seekPreview)
+
+        // 4b. Playback error overlay — shows the real reason a video fails to play
+        // instead of leaving a silent black screen.
+        if (playerError != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.85f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ErrorOutline,
+                        contentDescription = null,
+                        tint = Color(0xFFFF6B6B),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Couldn't play this video",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = playerError ?: "",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Button(onClick = onBackClick) {
+                        Text("Go Back")
+                    }
+                }
+            }
+        }
 
         // 5. Custom HUD overlay (Top and Bottom controls panels)
         AnimatedVisibility(

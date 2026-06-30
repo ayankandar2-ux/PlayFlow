@@ -70,6 +70,9 @@ class PlayerViewModel(
     private val _isMuted = MutableStateFlow(false)
     val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
 
+    private val _playerError = MutableStateFlow<String?>(null)
+    val playerError: StateFlow<String?> = _playerError.asStateFlow()
+
     // Gestures HUD HUD (Volume / Brightness / Seek Preview)
     private val _volumeProgress = MutableStateFlow<Float?>(null) // null = hidden
     val volumeProgress: StateFlow<Float?> = _volumeProgress.asStateFlow()
@@ -143,9 +146,12 @@ class PlayerViewModel(
 
                     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                         // Don't let a playback failure (corrupt file, unsupported codec,
-                        // revoked permission, etc.) crash the whole app — just stop and log it.
+                        // revoked permission, etc.) crash the whole app — but DO surface it
+                        // so the user/developer can see what actually went wrong instead of
+                        // silent failure with nothing playing.
                         android.util.Log.e("PlayerViewModel", "Playback error", error)
                         _isPlaying.value = false
+                        _playerError.value = "${error.errorCodeName}: ${error.message ?: "Unknown playback error"}"
                     }
                 })
             }
@@ -156,6 +162,7 @@ class PlayerViewModel(
     fun playVideo(video: LocalVideo) {
         val p = _player ?: return
         _currentVideo.value = video
+        _playerError.value = null
 
         // Setup MediaItem
         try {
@@ -165,6 +172,7 @@ class PlayerViewModel(
             p.playWhenReady = true
         } catch (e: Exception) {
             android.util.Log.e("PlayerViewModel", "Failed to load video: ${video.path}", e)
+            _playerError.value = e.message ?: "Failed to load video"
             return
         }
 
