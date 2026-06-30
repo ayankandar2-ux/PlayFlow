@@ -50,7 +50,9 @@ class LibraryViewModel(
     val extractedMp3s: StateFlow<List<String>> = _extractedMp3s.asStateFlow()
 
     init {
-        scanLocalMedia()
+        // Scanning is now triggered explicitly after the media permission is granted
+        // (see MainActivity), instead of running blindly here, which used to crash
+        // or silently return zero videos on Android 13+ without permission.
     }
 
     fun scanLocalMedia() {

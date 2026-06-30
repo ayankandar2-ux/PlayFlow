@@ -11,7 +11,6 @@ import com.example.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
-import java.io.File
 
 class VideoRepository(
     private val context: Context,
@@ -91,40 +90,46 @@ class VideoRepository(
     // Local Video Scanning (MediaStore)
     suspend fun scanLocalVideos(): List<LocalVideo> = withContext(Dispatchers.IO) {
         val list = mutableListOf<LocalVideo>()
-        val uri: Uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        val collection: Uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
         val projection = arrayOf(
             MediaStore.Video.Media._ID,
-            MediaStore.Video.Media.DATA,
+            MediaStore.Video.Media.DISPLAY_NAME,
             MediaStore.Video.Media.TITLE,
             MediaStore.Video.Media.DURATION,
-            MediaStore.Video.Media.SIZE
+            MediaStore.Video.Media.SIZE,
+            MediaStore.Video.Media.BUCKET_DISPLAY_NAME
         )
 
         try {
             val cursor: Cursor? = context.contentResolver.query(
-                uri, projection, null, null, "${MediaStore.Video.Media.DATE_ADDED} DESC"
+                collection, projection, null, null, "${MediaStore.Video.Media.DATE_ADDED} DESC"
             )
 
             cursor?.use {
                 val idCol = it.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
-                val dataCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+                val nameCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
                 val titleCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.TITLE)
                 val durationCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
                 val sizeCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+                val bucketCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
 
                 while (it.moveToNext()) {
-                    val path = it.getString(dataCol)
-                    val title = it.getString(titleCol)
+                    val id = it.getLong(idCol)
+                    // Build a proper content:// URI — this is the reliable, scoped-storage-safe
+                    // way to reference media on Android 10+ (the old DATA file-path column
+                    // is deprecated and frequently null/inaccessible, which crashes playback).
+                    val contentUri = android.content.ContentUris.withAppendedId(
+                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id
+                    )
+                    val displayName = it.getString(nameCol) ?: "Unknown"
+                    val title = it.getString(titleCol)?.takeIf { t -> t.isNotBlank() } ?: displayName
                     val duration = it.getLong(durationCol)
                     val size = it.getLong(sizeCol)
-
-                    // Resolve folder name
-                    val file = File(path)
-                    val folderName = file.parentFile?.name ?: "Unknown"
+                    val folderName = it.getString(bucketCol) ?: "Unknown"
 
                     list.add(
                         LocalVideo(
-                            path = path,
+                            path = contentUri.toString(),
                             title = title,
                             duration = duration,
                             size = size,
@@ -133,6 +138,9 @@ class VideoRepository(
                     )
                 }
             }
+        } catch (e: SecurityException) {
+            // Permission not granted yet — caller should request it and retry
+            Log.e("VideoRepository", "Missing media permission", e)
         } catch (e: Exception) {
             Log.e("VideoRepository", "Error scanning local videos", e)
         }

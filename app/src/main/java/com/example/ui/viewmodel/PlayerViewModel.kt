@@ -140,6 +140,13 @@ class PlayerViewModel(
                             stopTrackingProgress()
                         }
                     }
+
+                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                        // Don't let a playback failure (corrupt file, unsupported codec,
+                        // revoked permission, etc.) crash the whole app — just stop and log it.
+                        android.util.Log.e("PlayerViewModel", "Playback error", error)
+                        _isPlaying.value = false
+                    }
                 })
             }
             startSubtitleSyncLoop()
@@ -149,12 +156,17 @@ class PlayerViewModel(
     fun playVideo(video: LocalVideo) {
         val p = _player ?: return
         _currentVideo.value = video
-        
+
         // Setup MediaItem
-        val mediaItem = MediaItem.fromUri(video.path)
-        p.setMediaItem(mediaItem)
-        p.prepare()
-        p.playWhenReady = true
+        try {
+            val mediaItem = MediaItem.fromUri(video.path)
+            p.setMediaItem(mediaItem)
+            p.prepare()
+            p.playWhenReady = true
+        } catch (e: Exception) {
+            android.util.Log.e("PlayerViewModel", "Failed to load video: ${video.path}", e)
+            return
+        }
 
         // Load saved subtitle sync and positions
         viewModelScope.launch {
